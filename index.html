@@ -40,7 +40,7 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   min-height: 100vh;
-  overflow-x: hidden; /* desktop only — mobile overrides below */
+  overflow-x: hidden; 
 }
 
 body::before {
@@ -1255,14 +1255,34 @@ tr.atm-row td.strike-cell { color:var(--accent); }
   #tableContainer table { min-width:680px; font-size:9px; }
   td { padding:5px 5px; }
 }
+/* ═══ CHART SETTINGS MENU (NEW) ═══ */
+.chart-settings-btn {
+  background: var(--panel3); border: 1px solid var(--border2); color: var(--text);
+  padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 14px;
+}
+.chart-settings-btn:hover { border-color: var(--accent); }
+.cs-menu {
+  display: none; position: absolute; right: 0; top: 100%; margin-top: 8px;
+  background: #1e222d; border: 1px solid var(--border); border-radius: 6px;
+  width: 240px; z-index: 999; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  padding: 6px 0;
+}
+.cs-menu-item {
+  padding: 12px 16px; font-family: var(--font-mono); font-size: 12px;
+  color: #d1d4dc; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  transition: background 0.2s;
+}
+.cs-menu-item:hover { background: rgba(255,255,255,0.05); }
+.cs-menu-icon { font-size: 14px; width: 16px; text-align: center; }
+.cs-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 6px 0; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
 </head>
 <body>
 <div class="app">
 
-<!-- HEADER -->
 <div class="header">
   <div class="brand">
     <div class="brand-icon">OC</div>
@@ -1278,7 +1298,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
   </div>
 </div>
 
-<!-- AUTH SCREEN -->
 <div id="authScreen">
   <div class="auth-card">
     <div class="auth-title">CONNECT UPSTOX</div>
@@ -1346,10 +1365,8 @@ tr.atm-row td.strike-cell { color:var(--accent); }
   </div>
 </div>
 
-<!-- MAIN APP -->
 <div id="mainApp">
 
-  <!-- Controls -->
   <div class="ctrl-bar">
     <div class="ctrl-group">
       <div class="ctrl-label">Index / Symbol</div>
@@ -1397,7 +1414,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     <button class="btn btn-ghost btn-sm" id="autoBtn" onclick="toggleAuto()">AUTO: OFF</button>
   </div>
 
-  <!-- ═══ BUYING DANGER BANNER ═══ -->
   <div class="buying-danger-banner" id="buyingDangerBanner">
     <div class="bdb-inner">
       <div class="bdb-icon" id="bdbIcon">⚠️</div>
@@ -1413,7 +1429,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- Stats -->
   <div class="stats-row">
     <div class="stat">
       <div class="stat-lbl">SPOT PRICE</div>
@@ -1448,7 +1463,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
   </div>
 
 
-  <!-- ═══ MARKET SENTIMENT DASHBOARD ═══ -->
   <div class="sentiment-dashboard" id="sentimentDash">
     <div class="sent-card" id="sentTrend">
       <div class="sent-lbl">TREND</div>
@@ -1476,7 +1490,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ TRADE SETUP CARD ═══ -->
   <div class="trade-setup-wrap">
     <div class="trade-setup-header" onclick="toggleTradeSetup()">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -1495,7 +1508,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ OI CHANGE TRACKER ═══ -->
   <div class="oi-tracker-wrap">
     <div class="trade-setup-header" onclick="toggleOITracker()">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -1537,7 +1549,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ PRICE ALERTS ═══ -->
   <div class="price-alert-wrap">
     <div class="trade-setup-header" onclick="togglePriceAlerts()">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -1568,7 +1579,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ FII/DII DATA ═══ -->
   <div class="fiidii-wrap">
     <div class="trade-setup-header" onclick="toggleFiiDii()">
       <div style="display:flex;align-items:center;gap:10px;">
@@ -1615,7 +1625,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ AI MARKET DIRECTION PANEL ═══ -->
   <div class="ai-panel">
     <div class="ai-header" onclick="toggleAiPanel()">
       <div class="ai-header-left">
@@ -1641,7 +1650,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
         <span>⚡ ANALYZE OPTION CHAIN — 100% FREE</span>
       </button>
 
-      <!-- Result area -->
       <div id="aiResult"></div>
 
       <div class="ai-disclaimer">
@@ -1653,7 +1661,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
   </div>
 
 
-  <!-- ═══ OI + VOLUME CHART ═══ -->
   <div class="chart-section" id="chartSection" style="display:none">
     <div class="chart-topbar">
       <div>
@@ -1683,7 +1690,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- Filters -->
   <div class="filter-wrap">
     <div class="filter-header" onclick="toggleFilters(this)">
       <div class="filter-header-left">
@@ -1731,7 +1737,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- Table -->
   <div class="table-wrap">
     <div class="table-topbar">
       <div class="table-top-left">
@@ -1754,7 +1759,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
   </div>
 
 
-  <!-- ═══ UNUSUAL ACTIVITY DETECTOR ═══ -->
   <div class="alerts-section" id="alertsSection">
     <div class="section-header">
       <div class="section-header-left">
@@ -1773,7 +1777,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ OI HEATMAP ═══ -->
   <div class="heatmap-section" id="heatmapSection">
     <div class="section-header">
       <div class="section-header-left">
@@ -1796,7 +1799,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ STRATEGY BUILDER ═══ -->
   <div class="strategy-section" id="stratSection">
     <div class="section-header">
       <div class="section-header-left">
@@ -1826,7 +1828,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ CANDLESTICK CHART ═══ -->
   <div class="candle-section" id="candleSection">
     <div class="candle-select-row" style="flex-wrap:wrap;gap:8px;">
       <span style="font-size:18px;">📈</span>
@@ -1838,10 +1839,12 @@ tr.atm-row td.strike-cell { color:var(--accent); }
       <div class="ctrl-group">
         <div class="ctrl-label">Timeframe</div>
         <select class="ctrl-select" id="emaTfSel" onchange="loadEmaChart()">
-          <option value="1day">Daily</option>
-          <option value="1week">Weekly</option>
-          <option value="30minute">30 Min</option>
-          <option value="1minute">1 Min</option>
+          <option value="1minute">1m</option>
+          <option value="5minute">5m</option>
+          <option value="15minute">15m</option>
+          <option value="30minute">30m</option>
+          <option value="day">1D</option>
+          <option value="week">1W</option>
         </select>
       </div>
       <div class="ctrl-group">
@@ -1851,15 +1854,30 @@ tr.atm-row td.strike-cell { color:var(--accent); }
           <option value="180">6 Months</option>
           <option value="90">3 Months</option>
           <option value="30">1 Month</option>
+          <option value="1">1 Day</option> 
         </select>
       </div>
       <div class="ctrl-group" style="flex-direction:row;gap:4px;align-items:flex-end;">
         <button onclick="scrollEmaChart(-0.3)" style="background:var(--panel3);border:1px solid var(--border2);color:var(--text);padding:5px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);font-size:11px;">◀</button>
         <button onclick="scrollEmaChart(0.3)"  style="background:var(--panel3);border:1px solid var(--border2);color:var(--text);padding:5px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);font-size:11px;">▶</button>
-        <button onclick="resetEmaChart()"       style="background:var(--panel3);border:1px solid var(--border2);color:var(--accent);padding:5px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);font-size:10px;">RESET</button>
+        <button onclick="resetEmaChart()"      style="background:var(--panel3);border:1px solid var(--border2);color:var(--accent);padding:5px 10px;border-radius:4px;cursor:pointer;font-family:var(--font-mono);font-size:10px;">RESET</button>
+        
+        <div style="position:relative;">
+          <button class="chart-settings-btn" onclick="toggleChartMenu()">⚙️</button>
+          <div class="cs-menu" id="chartToolsMenu">
+            <div class="cs-menu-item" onclick="setChartCursor('crosshair')"><span class="cs-menu-icon">•</span> Dot</div>
+            <div class="cs-menu-item" onclick="setChartCursor('default')"><span class="cs-menu-icon">↖</span> Arrow</div>
+            <div class="cs-menu-item" onclick="toggleChartMenu()"><span class="cs-menu-icon">▶</span> Demonstration</div>
+            <div class="cs-menu-item" onclick="toggleChartMenu()"><span class="cs-menu-icon">✏️</span> Eraser</div>
+            <div class="cs-divider"></div>
+            <div class="cs-menu-item" style="justify-content:space-between;" onclick="toggleLongPress()">
+              <span>Values tooltip on long press</span>
+              <div class="toggle-switch" id="ttLongPressTog"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    <!-- legend -->
     <div id="emaLegend" style="display:flex;gap:18px;flex-wrap:wrap;padding:6px 18px 4px;font-family:var(--font-mono);font-size:9px;letter-spacing:.5px;border-bottom:1px solid var(--border);">
       <span style="color:#00e5a0;">▬ 6 EMA (Close)</span>
       <span style="color:#ff9f40;">▬ 6 EMA (Open)</span>
@@ -1867,15 +1885,12 @@ tr.atm-row td.strike-cell { color:var(--accent); }
       <span style="color:#00e5a0;font-size:8px;">▲ BUY CE &nbsp;</span>
       <span style="color:#ff3d6b;font-size:8px;">▼ BUY PE</span>
     </div>
-    <!-- signal box -->
     <div id="emaSignalBox" style="padding:4px 18px;min-height:20px;font-family:var(--font-mono);font-size:9px;letter-spacing:.5px;"></div>
-    <!-- scrollable chart -->
     <div id="emaChartWrap" style="overflow-x:auto;padding:10px 18px 14px;position:relative;">
       <canvas id="candleCanvas" height="300" style="min-width:900px;display:block;"></canvas>
     </div>
   </div>
 
-  <!-- ═══ NEWS FEED ═══ -->
   <div class="news-section" id="newsSection">
     <div class="section-header">
       <div class="section-header-left">
@@ -1895,8 +1910,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
     </div>
   </div>
 
-  <!-- ═══ ALERTS / NOTIFICATIONS ═══ -->
-  <!-- ═══ WHATSAPP BROADCAST LIST ═══ -->
   <div class="notif-section" id="notifSection">
     <div class="section-header">
       <div class="section-header-left">
@@ -1917,7 +1930,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
 
     <div style="padding:18px;">
 
-      <!-- Add number form -->
       <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;">
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px;">➕ ADD CONTACT / GROUP</div>
         <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap;">
@@ -1958,7 +1970,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
         </div>
       </div>
 
-      <!-- Contact list -->
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:10px;">CONTACT LIST (<span id="waCount">0</span>)</div>
       <div id="waContactList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted2);padding:12px;text-align:center;">
@@ -1966,7 +1977,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
         </div>
       </div>
 
-      <!-- Signal triggers -->
       <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;">
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px;">⚡ SIGNAL TRIGGER SETTINGS</div>
         <div class="notif-toggle">
@@ -2008,7 +2018,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
         </div>
       </div>
 
-      <!-- Telegram section -->
       <div style="background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;">
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--accent);letter-spacing:2px;margin-bottom:12px;">✈️ TELEGRAM BOT (Optional)</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
@@ -2027,7 +2036,6 @@ tr.atm-row td.strike-cell { color:var(--accent); }
         <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);">Telegram mein seedha message jayega — WhatsApp se zyada reliable for groups.</div>
       </div>
 
-      <!-- Log -->
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:8px;">ACTIVITY LOG</div>
       <div class="notif-log" id="notifLog">
         <div class="notif-log-item" style="color:var(--muted2);">Alert log will appear here...</div>
@@ -2445,9 +2453,9 @@ function analyzeOptionChain() {
   const atm      = Math.round(spot / step) * step;
 
   // ── Expiry timing context ──
-  const dte         = getDaysToExpiry(expiry);          // days to expiry
-  const expiryDay   = dte === 0;                        // aaj expiry hai?
-  const nearExpiry  = dte <= 1;                         // aaj ya kal expiry
+  const dte         = getDaysToExpiry(expiry);         // days to expiry
+  const expiryDay   = dte === 0;                       // aaj expiry hai?
+  const nearExpiry  = dte <= 1;                        // aaj ya kal expiry
   const lastHour    = expiryDay && new Date().getHours() >= 14; // 2pm+ on expiry day
 
   // ── Aggregate OI, Volume, Greeks ──
@@ -2755,7 +2763,6 @@ function renderAiResult(r, s) {
     </div>`).join('');
 
   document.getElementById('aiResult').innerHTML = `
-    <!-- Direction Card -->
     <div class="ai-direction-card ${dirClass}" style="margin-top:16px">
       <div class="ai-dir-icon">${dirEmoji}</div>
       <div class="ai-dir-info" style="flex:1">
@@ -2777,7 +2784,6 @@ function renderAiResult(r, s) {
       </div>
     </div>
 
-    <!-- ⚡ BUYING DANGER CONTEXT BOX — reconciles direction vs buying risk -->
     ${(() => {
       const danger = calcBuyingDanger();
       if (!danger) return '';
@@ -2826,12 +2832,10 @@ function renderAiResult(r, s) {
       </div>`;
     })()}
 
-    <!-- Summary -->
     <div class="ai-analysis-text" style="margin-top:14px">
       ${(r.summary || '').replace(/\n/g, '<br>')}
     </div>
 
-    <!-- Metrics grid -->
     <div class="ai-metrics-grid">
       <div class="ai-metric">
         <div class="ai-metric-label">PCR Reading</div>
@@ -2860,13 +2864,11 @@ function renderAiResult(r, s) {
       </div>
     </div>
 
-    <!-- Signals -->
     <div style="font-size:9px;color:var(--muted);font-family:var(--font-mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">
       KEY SIGNALS DETECTED
     </div>
     <div class="ai-signals">${signalsHtml}</div>
 
-    <!-- Trade Ideas -->
     <div class="ai-trade-box">
       <div class="ai-trade-title">💡 TRADE IDEAS (Educational Only)</div>
       <div class="ai-trade-grid">
@@ -3532,30 +3534,73 @@ function populateCandleStrikes() {
   loadEmaChart();
 }
 
+// ── Date Formatting Fix (To avoid timezone issues) ──
+function formatDate(date) {
+    const d = new Date(date);
+    let month = '' + (d.getMonth() + 1);
+    let day = '' + d.getDate();
+    const year = d.getFullYear();
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
+    return [year, month, day].join('-');
+}
+
 // ── EMA calculation ─────────────────────────────────
 function calcEMA(values, period) {
   const k = 2 / (period + 1);
   const result = new Array(values.length).fill(null);
-  let started = false; let ema = 0;
+  let ema = null;
+  
   for (let i = 0; i < values.length; i++) {
     if (values[i] == null) continue;
-    if (!started) { ema = values[i]; started = true; result[i] = ema; continue; }
-    ema = values[i] * k + ema * (1 - k);
+    
+    // Pehla valid number milne par usko seed (base) maan lo
+    if (ema === null) { 
+      ema = values[i]; 
+      result[i] = ema; 
+      continue; 
+    }
+    
+    // EMA Formula: (Price * k) + (Previous EMA * (1 - k))
+    ema = (values[i] * k) + (ema * (1 - k));
     result[i] = ema;
   }
   return result;
 }
 
-// ── Format label by timeframe ───────────────────────
+// ── Format label by timeframe (TradingView Style) ───────────────────────
 function fmtCandleLabel(ts, tf) {
   const d = new Date(ts);
-  if (tf === '1day' || tf === '1week') return `${d.getDate()}/${d.getMonth()+1}/${String(d.getFullYear()).slice(2)}`;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day = String(d.getDate()).padStart(2, '0');
+  const mon = months[d.getMonth()];
+  if (tf === 'day' || tf === 'week') return `${day} ${mon} '${String(d.getFullYear()).slice(2)}`;
   const h = String(d.getHours()).padStart(2,'0');
   const m = String(d.getMinutes()).padStart(2,'0');
-  return `${d.getDate()}/${d.getMonth()+1} ${h}:${m}`;
+  return `${day} ${mon} ${h}:${m}`;
 }
-
-// ── Main chart loader ────────────────────────────────
+// ── Special Fetch for Public Historical Data (No Auth Header) ──
+async function fetchHistorical(url) {
+  const proxies = [
+    async () => {
+      const r = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+    async () => {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { headers: { Accept: 'application/json' } });
+      if (!r.ok) throw new Error(`Proxy HTTP ${r.status}`);
+      return r.json();
+    }
+  ];
+  for (let i = 0; i < proxies.length; i++) {
+    try {
+      return await Promise.race([proxies[i](), new Promise((_,rej) => setTimeout(()=>rej(new Error('Timeout')), 8000))]);
+    } catch(e) { if (i === proxies.length - 1) throw e; }
+  }
+}
+// ── Main chart loader (WITH TODAY'S INTRADAY DATA FIX) ─────────────────
+// ── Main chart loader (WITH TODAY'S INTRADAY DATA FIX) ─────────────────
 async function loadEmaChart() {
   const instrKey = document.getElementById('symbolSel').value;
   const tf       = document.getElementById('emaTfSel').value;
@@ -3565,32 +3610,107 @@ async function loadEmaChart() {
   const signalBox = document.getElementById('emaSignalBox');
   const subLabel  = document.getElementById('emaSubLabel');
   if (subLabel) subLabel.textContent = `${label} · 6 EMA Open & Close · Loading...`;
-  if (signalBox) signalBox.innerHTML = `<span style="color:var(--muted);">Fetching historical data…</span>`;
+  if (signalBox) signalBox.innerHTML = `<span style="color:var(--muted);">Fetching historical & live data…</span>`;
 
-  const today  = new Date();
-  const from   = new Date(today); from.setDate(from.getDate() - days);
-  const toStr  = today.toISOString().slice(0,10);
-  const fromStr= from.toISOString().slice(0,10);
-
-  const url = `https://api.upstox.com/v2/historical-candle/${encodeURIComponent(instrKey)}/${tf}/${toStr}/${fromStr}`;
+  const d = new Date();
+  const toStr = formatDate(d);
+  d.setDate(d.getDate() - days);
+  const fromStr = formatDate(d);
 
   let candles = [];
   try {
-    const r = await upstoxGet(url);
-    if (!r.data?.candles?.length) throw new Error('No data');
-    // API returns newest first — reverse to chronological
-    candles = [...r.data.candles].reverse();
+    // 1. Fetch Historical Data (Past days)
+    const histUrl = `https://api.upstox.com/v2/historical-candle/${encodeURIComponent(instrKey)}/${tf}/${toStr}/${fromStr}`;
+    const rHist = await fetchHistorical(histUrl);
+    if (rHist.data?.candles) {
+      candles = [...rHist.data.candles].reverse();
+    }
+
+    // 2. Fetch Intraday Data (TODAY'S LIVE DATA) for 1m, 5m, 15m aur 30m
+    if (tf === '1minute' || tf === '5minute' || tf === '15minute' || tf === '30minute') {
+      const intraUrl = `https://api.upstox.com/v2/historical-candle/intraday/${encodeURIComponent(instrKey)}/${tf}`;
+      try {
+        const rIntra = await fetchHistorical(intraUrl);
+        if (rIntra.data?.candles) {
+          const intraCandles = [...rIntra.data.candles].reverse();
+          // Merge dono data ko (duplicate timestamps remove karke)
+          const combined = [...candles, ...intraCandles];
+          const uniqueMap = new Map();
+          combined.forEach(c => uniqueMap.set(c[0], c)); 
+          candles = Array.from(uniqueMap.values()).sort((a, b) => new Date(a[0]) - new Date(b[0]));
+        }
+      } catch (intraErr) {
+        console.log("Intraday fetch failed, continuing with historical.");
+      }
+    }
+
+    if (!candles.length) throw new Error('No data returned');
   } catch(e) {
-    if (signalBox) signalBox.innerHTML = `<span style="color:var(--red);">⚠ Historical data load failed: ${e.message}. Token valid hai? Upstox historical candle API access check karo.</span>`;
-    if (subLabel) subLabel.textContent = `${label} · 6 EMA Open & Close · Error`;
+    if (signalBox) signalBox.innerHTML = `<span style="color:var(--red);">⚠ Chart data failed: ${e.message}</span>`;
+    if (subLabel) subLabel.textContent = `${label} · Error loading chart`;
     return;
   }
 
   emaAllCandles = candles;
-  emaViewOffset = 0;
-  if (subLabel) subLabel.textContent = `${label} · 6 EMA (Open) & 6 EMA (Close) · ${tf} · ${candles.length} bars`;
+  emaViewOffset = 0; 
+  if (subLabel) subLabel.textContent = `${label} · 6 EMA (O/C) · ${tf} · ${candles.length} bars`;
   renderEmaChart();
 }
+
+// ── CUSTOM TRADINGVIEW CROSSHAIR PLUGIN ──
+const tvCrosshairPlugin = {
+  id: 'tvCrosshair',
+  afterDraw: (chart) => {
+    if (chart.tooltip?._active?.length) {
+      const activePoint = chart.tooltip._active[0];
+      const ctx = chart.ctx;
+      const x = activePoint.element.x;
+      const y = activePoint.element.y; 
+      
+      const topY = chart.chartArea.top;
+      const bottomY = chart.chartArea.bottom;
+      const leftX = chart.chartArea.left;
+      const rightX = chart.chartArea.right;
+
+      ctx.save();
+      // Draw Crosshair Lines
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      
+      // Vertical Line
+      ctx.moveTo(x, topY);
+      ctx.lineTo(x, bottomY);
+      // Horizontal Line
+      ctx.moveTo(leftX, y);
+      ctx.lineTo(rightX, y);
+      ctx.stroke();
+
+      // ── Y-Axis Price Label (Right side) ──
+      const yValue = chart.scales.y.getValueForPixel(y);
+      ctx.fillStyle = '#2a2e39'; 
+      ctx.fillRect(rightX, y - 12, 65, 24);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px "Space Mono"';
+      ctx.textAlign = 'left';
+      ctx.fillText(yValue.toFixed(2), rightX + 6, y + 4);
+
+      // ── X-Axis Date/Time Label (Bottom) ──
+      const xValue = activePoint.index;
+      const xLabel = chart.data.labels[xValue];
+      ctx.font = 'bold 11px "Space Mono"';
+      const textWidth = ctx.measureText(xLabel).width;
+      ctx.fillStyle = '#2a2e39';
+      ctx.fillRect(x - textWidth/2 - 8, bottomY, textWidth + 16, 24);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(xLabel, x, bottomY + 16);
+
+      ctx.restore();
+    }
+  }
+};
 
 // ── Render with current offset ───────────────────────
 function renderEmaChart() {
@@ -3598,56 +3718,43 @@ function renderEmaChart() {
   if (!candles.length) return;
   const tf = document.getElementById('emaTfSel').value;
 
-  // Slice view window
   const total   = candles.length;
   const viewEnd = Math.max(EMA_VIEW_BARS, total - emaViewOffset);
   const viewStart = Math.max(0, viewEnd - EMA_VIEW_BARS);
   const view    = candles.slice(viewStart, viewEnd);
 
-  // Calculate EMAs on FULL dataset first (so EMA is accurate even for visible slice)
-  const opens  = candles.map(c => c[1]);   // index 1 = open
-  const closes = candles.map(c => c[4]);   // index 4 = close
+  const opens  = candles.map(c => c[1]);
+  const closes = candles.map(c => c[4]);
   const ema6Open  = calcEMA(opens,  6);
   const ema6Close = calcEMA(closes, 6);
 
-  // Slice EMA arrays to match view
   const vEmaO = ema6Open.slice(viewStart, viewEnd);
   const vEmaC = ema6Close.slice(viewStart, viewEnd);
   const vClose= closes.slice(viewStart, viewEnd);
-
-  // Labels
   const labels = view.map(c => fmtCandleLabel(c[0], tf));
 
-  // Candle colors
   const bullColor  = 'rgba(0,229,160,0.85)';
   const bearColor  = 'rgba(255,61,107,0.85)';
   const bullBorder = 'rgba(0,229,160,1)';
   const bearBorder = 'rgba(255,61,107,1)';
 
-  // BUY CE / BUY PE signals — EMA crossover on full dataset
-  // Signal at index i in full array
-  const signalsCE = new Array(candles.length).fill(null); // ema6close crosses above ema6open
-  const signalsPE = new Array(candles.length).fill(null); // ema6close crosses below ema6open
+  const signalsCE = new Array(candles.length).fill(null); 
+  const signalsPE = new Array(candles.length).fill(null); 
   for (let i = 1; i < candles.length; i++) {
     if (ema6Close[i] == null || ema6Open[i] == null || ema6Close[i-1] == null || ema6Open[i-1] == null) continue;
-    if (ema6Close[i-1] <= ema6Open[i-1] && ema6Close[i] > ema6Open[i]) {
-      signalsCE[i] = closes[i]; // BUY CE — close EMA crossed above open EMA
-    }
-    if (ema6Close[i-1] >= ema6Open[i-1] && ema6Close[i] < ema6Open[i]) {
-      signalsPE[i] = closes[i]; // BUY PE — close EMA crossed below open EMA
-    }
+    if (ema6Close[i-1] <= ema6Open[i-1] && ema6Close[i] > ema6Open[i]) signalsCE[i] = closes[i];
+    if (ema6Close[i-1] >= ema6Open[i-1] && ema6Close[i] < ema6Open[i]) signalsPE[i] = closes[i];
   }
   const vSigCE = signalsCE.slice(viewStart, viewEnd);
   const vSigPE = signalsPE.slice(viewStart, viewEnd);
 
-  // Latest signal for signal box
   const signalBox = document.getElementById('emaSignalBox');
   let lastSig = null;
   for (let i = candles.length - 1; i >= 0; i--) {
     if (signalsCE[i] != null) { lastSig = { type:'CE', idx:i }; break; }
     if (signalsPE[i] != null) { lastSig = { type:'PE', idx:i }; break; }
   }
-  // Who is on top now?
+  
   const lastIdx = candles.length - 1;
   const currentBias = (ema6Close[lastIdx] > ema6Open[lastIdx]) ? 'BULLISH' : 'BEARISH';
   const biasColor   = currentBias === 'BULLISH' ? '#00e5a0' : '#ff3d6b';
@@ -3656,89 +3763,84 @@ function renderEmaChart() {
     : '';
   if (signalBox) signalBox.innerHTML = `${lastSigText}Current bias: <span style="color:${biasColor};font-weight:bold;">${currentBias}</span> &nbsp;|&nbsp; <span style="color:#aac">6 EMA Close: ${vEmaC[vEmaC.length-1]?.toFixed(2)||'—'}</span> &nbsp; <span style="color:#ff9f40;">6 EMA Open: ${vEmaO[vEmaO.length-1]?.toFixed(2)||'—'}</span>`;
 
+  const visibleLows = view.map(c => c[3]); 
+  const visibleHighs = view.map(c => c[2]);
+  const yMin = Math.min(...visibleLows);
+  const yMax = Math.max(...visibleHighs);
+  const yPadding = (yMax - yMin) * 0.1;
+
   const ctx = document.getElementById('candleCanvas').getContext('2d');
   if (candleChart) { candleChart.destroy(); candleChart = null; }
+
+  Chart.register(tvCrosshairPlugin);
 
   candleChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
       datasets: [
-        // Wick (high-low range)
         {
           label: 'Wick',
-          data: view.map(c => [c[3], c[2]]),   // [low, high]
+          data: view.map(c => [c[3], c[2]]),
           backgroundColor: view.map(c => c[4] >= c[1] ? 'rgba(0,229,160,0.25)' : 'rgba(255,61,107,0.25)'),
           borderColor:     view.map(c => c[4] >= c[1] ? bullBorder : bearBorder),
           borderWidth: 1, barPercentage: 0.2, categoryPercentage: 1,
           order: 3,
         },
-        // Body (open-close)
         {
           label: 'Body',
-          data: view.map(c => [c[1], c[4]]),   // [open, close]
+          data: view.map(c => [c[1], c[4]]),
           backgroundColor: view.map(c => c[4] >= c[1] ? bullColor : bearColor),
           borderColor:     view.map(c => c[4] >= c[1] ? bullBorder : bearBorder),
-          borderWidth: 1, barPercentage: 0.7, categoryPercentage: 1,
+          borderWidth: 1, barPercentage: 0.8, categoryPercentage: 0.9,
           order: 2,
         },
-        // 6 EMA Close — green line
         {
-          type: 'line', label: '6 EMA Close',
-          data: vEmaC,
-          borderColor: '#00e5a0', borderWidth: 1.8,
-          pointRadius: 0, tension: 0.3, fill: false, order: 1,
+          type: 'line', label: '6 EMA Close', data: vEmaC,
+          borderColor: '#00e5a0', borderWidth: 1.8, pointRadius: 0, tension: 0.3, fill: false, order: 1,
         },
-        // 6 EMA Open — orange line
         {
-          type: 'line', label: '6 EMA Open',
-          data: vEmaO,
-          borderColor: '#ff9f40', borderWidth: 1.8,
-          pointRadius: 0, tension: 0.3, fill: false, order: 1,
+          type: 'line', label: '6 EMA Open', data: vEmaO,
+          borderColor: '#ff9f40', borderWidth: 1.8, pointRadius: 0, tension: 0.3, fill: false, order: 1,
         },
-        // Price (close) — faint blue line
         {
-          type: 'line', label: 'Price',
-          data: vClose,
-          borderColor: 'rgba(0,201,255,0.35)', borderWidth: 1,
-          pointRadius: 0, tension: 0.1, fill: false, order: 1,
+          type: 'line', label: 'Price', data: vClose,
+          borderColor: 'rgba(0,201,255,0.35)', borderWidth: 1, pointRadius: 0, tension: 0.1, fill: false, order: 1,
         },
-        // BUY CE signals — green triangles up
         {
           type: 'scatter', label: 'BUY CE',
-          data: vSigCE.map((v,i) => v != null ? { x: labels[i], y: v } : null).filter(Boolean),
-          backgroundColor: '#00e5a0',
-          pointStyle: 'triangle', radius: 7, order: 0,
+          data: vSigCE.map((v,i) => v != null ? { x: labels[i], y: v - (yPadding * 0.3) } : null).filter(Boolean),
+          backgroundColor: '#00e5a0', pointStyle: 'triangle', radius: 7, order: 0,
         },
-        // BUY PE signals — red triangles down
         {
           type: 'scatter', label: 'BUY PE',
-          data: vSigPE.map((v,i) => v != null ? { x: labels[i], y: v } : null).filter(Boolean),
-          backgroundColor: '#ff3d6b',
-          pointStyle: 'triangle', rotation: 180, radius: 7, order: 0,
+          data: vSigPE.map((v,i) => v != null ? { x: labels[i], y: v + (yPadding * 0.3) } : null).filter(Boolean),
+          backgroundColor: '#ff3d6b', pointStyle: 'triangle', rotation: 180, radius: 7, order: 0,
         },
       ]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      animation: false,
+      responsive: true, maintainAspectRatio: false, animation: false,
+      layout: { padding: { right: 40, bottom: 20 } }, 
+      events: isLongPressTooltip ? ['click', 'touchstart'] : ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove', 'wheel'],
       plugins: {
         legend: { display: false },
+        zoom: {
+          pan: { enabled: true, mode: 'x' }, // Direct drag to Pan (bina Ctrl dabaye)
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } 
+        },
         tooltip: {
           backgroundColor: '#0d1420', borderColor: '#1e3050', borderWidth: 1,
           titleColor: '#00c9ff', bodyColor: '#ddeeff',
           titleFont: { family: 'Space Mono', size: 10 },
           bodyFont:  { family: 'Space Mono', size: 9 },
-          filter: (item) => ['Body','BUY CE','BUY PE'].includes(item.dataset.label),
+          intersect: false, mode: 'index',
+          filter: (item) => ['Body'].includes(item.dataset.label),
           callbacks: {
-            title: (items) => items[0]?.label || '',
+            title: () => '', 
             label: (item) => {
-              if (item.dataset.label === 'Body') {
-                const c = view[item.dataIndex];
-                return [`O:${c[1].toFixed(2)}  H:${c[2].toFixed(2)}  L:${c[3].toFixed(2)}  C:${c[4].toFixed(2)}`];
-              }
-              if (item.dataset.label === 'BUY CE') return ['▲ BUY CE SIGNAL'];
-              if (item.dataset.label === 'BUY PE') return ['▼ BUY PE SIGNAL'];
+              const c = view[item.dataIndex];
+              return `O: ${c[1].toFixed(2)}  H: ${c[2].toFixed(2)}  L: ${c[3].toFixed(2)}  C: ${c[4].toFixed(2)}`;
             }
           }
         }
@@ -3746,17 +3848,20 @@ function renderEmaChart() {
       scales: {
         x: {
           grid: { color: 'rgba(30,48,80,0.4)' },
-          ticks: { color: '#4a6a8a', font: { family: 'Space Mono', size: 7 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 20 }
+          ticks: { color: '#4a6a8a', font: { family: 'Space Mono', size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
         },
         y: {
+          position: 'right', 
+          min: yMin - yPadding, max: yMax + yPadding, beginAtZero: false, 
           grid: { color: 'rgba(30,48,80,0.4)' },
-          ticks: { color: '#4a6a8a', font: { family: 'Space Mono', size: 9 }, callback: v => '₹' + v.toFixed(0) }
+          ticks: { color: '#4a6a8a', font: { family: 'Space Mono', size: 11 }, callback: v => v.toFixed(0) }
         }
       }
     }
   });
-}
 
+  document.getElementById('candleCanvas').style.cursor = currentChartCursor;
+}
 // ── Scroll / Reset ───────────────────────────────────
 function scrollEmaChart(pct) {
   if (!emaAllCandles.length) return;
@@ -3772,6 +3877,39 @@ function scrollEmaChart(pct) {
 function resetEmaChart() {
   emaViewOffset = 0;
   renderEmaChart();
+}
+/* ═══ CHART SETTINGS LOGIC ═══ */
+let isLongPressTooltip = false;
+let currentChartCursor = 'crosshair';
+
+function toggleChartMenu() {
+  const menu = document.getElementById('chartToolsMenu');
+  menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+function setChartCursor(cursorType) {
+  currentChartCursor = cursorType;
+  const canvas = document.getElementById('candleCanvas');
+  if(canvas) canvas.style.cursor = cursorType;
+  toggleChartMenu(); // menu band karein
+}
+
+function toggleLongPress() {
+  isLongPressTooltip = !isLongPressTooltip;
+  const tog = document.getElementById('ttLongPressTog');
+  if (isLongPressTooltip) {
+    tog.classList.add('on');
+  } else {
+    tog.classList.remove('on');
+  }
+  
+  // Update chart if it exists
+  if (candleChart) {
+    candleChart.options.events = isLongPressTooltip 
+      ? ['click', 'touchstart'] 
+      : ['mousemove', 'mouseout', 'click', 'touchstart', 'touchmove'];
+    candleChart.update();
+  }
 }
 
 // Keep renderCandles as alias so any existing calls still work
@@ -4524,7 +4662,6 @@ function updateTradeSetup() {
   const lot = INSTRUMENTS[instrKey]?.lot || 25;
 
   document.getElementById('tradeCards').innerHTML = `
-    <!-- BULLISH SETUP -->
     <div class="trade-card bull-card">
       <div class="trade-card-title" style="color:var(--green)">📈 BULLISH CE BUY</div>
       <div class="trade-row">
@@ -4556,7 +4693,6 @@ function updateTradeSetup() {
       </div>
     </div>
 
-    <!-- BEARISH SETUP -->
     <div class="trade-card bear-card">
       <div class="trade-card-title" style="color:var(--red)">📉 BEARISH PE BUY</div>
       <div class="trade-row">
@@ -4588,7 +4724,6 @@ function updateTradeSetup() {
       </div>
     </div>
 
-    <!-- NEUTRAL / STRADDLE -->
     <div class="trade-card" style="border-color:rgba(255,208,0,.2);grid-column:span 2;">
       <div class="trade-card-title" style="color:var(--yellow)">⚖️ SIDEWAYS — SHORT STRADDLE</div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;">
@@ -5269,7 +5404,6 @@ function toast(msg, isErr = false) {
 }
 </script>
 
-<!-- ═══ MOBILE BOTTOM NAV ═══ -->
 <div id="mobileNav" style="
   display:none;
   position:fixed; bottom:0; left:0; right:0; z-index:200;
