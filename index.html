@@ -1275,7 +1275,17 @@ tr.atm-row td.strike-cell { color:var(--accent); }
 .cs-menu-item:hover { background: rgba(255,255,255,0.05); }
 .cs-menu-icon { font-size: 14px; width: 16px; text-align: center; }
 .cs-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 6px 0; }
+/* ═══ SIGNAL TESTER & LOGGER ═══ */
+.tester-section { background: var(--panel); border: 1px solid var(--purple); border-radius: 12px; margin-bottom: 14px; overflow: hidden; box-shadow: 0 0 15px rgba(176,107,255,0.1); }
+.log-table-wrap { max-height: 250px; overflow-y: auto; }
+.log-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 10px; }
+.log-table th { background: var(--panel3); padding: 8px; text-align: left; color: var(--muted); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border); }
+.log-table td { padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text); }
+.log-bull { color: var(--green); font-weight: bold; }
+.log-bear { color: var(--red); font-weight: bold; }
+.log-row:hover { background: rgba(176,107,255,0.05); }
 </style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
@@ -1827,7 +1837,40 @@ tr.atm-row td.strike-cell { color:var(--accent); }
       </div>
     </div>
   </div>
-
+	
+  <div class="tester-section" id="testerSection">
+    <div class="section-header" style="background:rgba(176,107,255,0.05); border-bottom:1px solid rgba(176,107,255,0.2);">
+      <div class="section-header-left">
+        <span style="font-size:18px;">🧪</span>
+        <div>
+          <div class="section-ttl" style="color:var(--purple);">MASTER SIGNAL TESTER</div>
+          <div class="section-sub">Tracks AI, Sentiment, Chart & OI Spikes</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" style="background:rgba(176,107,255,0.15);color:var(--purple);border:1px solid var(--purple);" onclick="exportSignalLogs()">📋 COPY LOGS FOR AI</button>
+      </div>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log-table" id="logTable">
+        <thead>
+          <tr>
+            <th>TIME</th>
+            <th>SOURCE</th>
+            <th>SIGNAL</th>
+            <th>ENTRY SPOT</th>
+            <th>CURRENT</th>
+            <th>MAX PROFIT</th>
+            <th>MAX DRAWDOWN</th>
+            <th>REASON / CONTEXT</th>
+          </tr>
+        </thead>
+        <tbody id="logTableBody">
+          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:20px;">Waiting for strong signals to trigger... (Keep Auto-refresh ON)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
   <div class="candle-section" id="candleSection">
     <div class="candle-select-row" style="flex-wrap:wrap;gap:8px;">
       <span style="font-size:18px;">📈</span>
@@ -4296,9 +4339,16 @@ function onChainLoaded() {
   buildStrategy(activeStrategy);
 
   if (!chainData.length) return;
+  const spot = chainData[0]?.underlying_spot_price || 0;
+  
+  // ── TRIGGER SIGNAL TESTER ──
+  if (typeof checkAndLogSignals === 'function') {
+      checkAndLogSignals(spot);
+      updateSignalLogs(spot);
+  }
+
   const instrKey = document.getElementById('symbolSel').value;
   const label    = INSTRUMENTS[instrKey]?.label || 'INDEX';
-  const spot     = chainData[0]?.underlying_spot_price || 0;
 
   // ── Detect direction change ──
   try {
@@ -5488,6 +5538,160 @@ function toast(msg, isErr = false) {
     if (found) found.scrollIntoView({behavior:'smooth', block:'start'});
   };
 })();
+/* ══════════════════════════════════════════════════════
+   MASTER SIGNAL TESTER (Tracks ALL 4 Engines)
+══════════════════════════════════════════════════════ */
+let strategyLogs = [];
+
+function checkAndLogSignals(spot) {
+  if (!chainData.length) return;
+  const instrKey = document.getElementById('symbolSel').value;
+  const label    = INSTRUMENTS[instrKey]?.label || 'INDEX';
+  const time     = new Date().toLocaleTimeString('en-IN');
+  const step     = INSTRUMENTS[instrKey]?.step || 50;
+  const atm      = Math.round(spot / step) * step;
+
+  const dangerBadge = document.getElementById('bdbBadge')?.textContent || "";
+  const dangerScore = dangerBadge.match(/\d+/g)?.pop() || 0;
+  const pcr = document.getElementById('statPCR')?.textContent || 0;
+  const ctx = `[Risk:${dangerScore} | PCR:${pcr}]`;
+
+  // 1. EMA CHART ENGINE
+  if (emaAllCandles.length > 0) {
+    const opens  = emaAllCandles.map(c => c[1]), closes = emaAllCandles.map(c => c[4]);
+    const emaO = calcEMA(opens, 6), emaC = calcEMA(closes, 6);
+    const lastIdx = emaAllCandles.length - 1;
+    if (emaC[lastIdx] > emaO[lastIdx] && emaC[lastIdx-1] <= emaO[lastIdx-1]) {
+      registerSignalLog('EMA Chart', 'BULL', spot, time, label, `Crossover ${ctx}`);
+    } else if (emaC[lastIdx] < emaO[lastIdx] && emaC[lastIdx-1] >= emaO[lastIdx-1]) {
+      registerSignalLog('EMA Chart', 'BEAR', spot, time, label, `Crossunder ${ctx}`);
+    }
+  }
+
+  // 2. AI ENGINE
+  try {
+    const aiResult = analyzeOptionChain();
+    if (aiResult.confidence >= 50 && (aiResult.dirClass === 'bullish' || aiResult.dirClass === 'bearish')) {
+      registerSignalLog('AI Engine', aiResult.dirClass === 'bullish' ? 'BULL' : 'BEAR', spot, time, label, `${aiResult.direction} ${ctx}`);
+    }
+  } catch(e) {}
+
+  // 3. SENTIMENT DASHBOARD
+  const trendText = document.getElementById('sentTrendVal')?.textContent || "";
+  if (trendText.includes('BULL')) {
+     registerSignalLog('Sentiment', 'BULL', spot, time, label, `Trend: ${trendText} ${ctx}`);
+  } else if (trendText.includes('BEAR')) {
+     registerSignalLog('Sentiment', 'BEAR', spot, time, label, `Trend: ${trendText} ${ctx}`);
+  }
+
+  // 4. OPTION CHAIN TABLE
+  const checkStrikes = [atm - step, atm, atm + step];
+  checkStrikes.forEach(s => {
+    const row = chainData.find(d => d.strike_price === s);
+    if (!row) return;
+    const ce = row.call_options?.market_data || {}, pe = row.put_options?.market_data || {};
+    const ceChg = (ce.oi || 0) - (ce.prev_oi || 0), peChg = (pe.oi || 0) - (pe.prev_oi || 0);
+    const ceLTP = ce.ltp || 0, peLTP = pe.ltp || 0;
+    const ceClose = ce.close_price || ceLTP, peClose = pe.close_price || peLTP;
+    
+    if (s <= atm && peChg > 10000 && peLTP <= peClose * 1.02) {
+      registerSignalLog('Opt Chain', 'BULL', spot, time, label, `Put Writing @ ${s} ${ctx}`);
+    }
+    if (s >= atm && ceChg > 10000 && ceLTP <= ceClose * 1.02) {
+      registerSignalLog('Opt Chain', 'BEAR', spot, time, label, `Call Writing @ ${s} ${ctx}`);
+    }
+  });
+
+  // 5. UNUSUAL ACTIVITY (Spikes)
+  chainData.forEach(d => {
+    const ce = d.call_options?.market_data || {}, pe = d.put_options?.market_data || {};
+    const s = d.strike_price;
+    const cPrev = ce.prev_oi || 0, pPrev = pe.prev_oi || 0;
+    const ceChgPct = cPrev > 0 ? ((ce.oi - cPrev) / cPrev * 100) : 0;
+    const peChgPct = pPrev > 0 ? ((pe.oi - pPrev) / pPrev * 100) : 0;
+    
+    if (ceChgPct > 100 && ce.oi > 50000) {
+      registerSignalLog('Alerts', 'BEAR', spot, time, label, `CE OI Surge @ ${s} ${ctx}`);
+    }
+    if (peChgPct > 100 && pe.oi > 50000) {
+      registerSignalLog('Alerts', 'BULL', spot, time, label, `PE OI Surge @ ${s} ${ctx}`);
+    }
+  });
+}
+
+function registerSignalLog(source, type, entrySpot, time, symbol, notes) {
+  const isDuplicate = strategyLogs.some(log => 
+    log.source === source && log.type === type && log.symbol === symbol &&
+    (new Date() - log.timestampObj) < 15 * 60 * 1000 
+  );
+
+  if (isDuplicate) return;
+
+  strategyLogs.push({
+    id: Date.now(),
+    timestampObj: new Date(),
+    time,
+    source,
+    type,
+    symbol,
+    entrySpot,
+    currentSpot: entrySpot,
+    maxFavorable: 0,
+    maxAdverse: 0,
+    notes
+  });
+  
+  toast(`🧪 Tester: New ${type} signal tracked from ${source}`, false);
+  renderSignalLogs();
+}
+
+function updateSignalLogs(currentSpot) {
+  if (!strategyLogs.length) return;
+  strategyLogs.forEach(log => {
+    log.currentSpot = currentSpot;
+    const move = currentSpot - log.entrySpot;
+    if (log.type === 'BULL') {
+      if (move > log.maxFavorable) log.maxFavorable = move;
+      if (move < log.maxAdverse) log.maxAdverse = move;
+    } else if (log.type === 'BEAR') {
+      if (-move > log.maxFavorable) log.maxFavorable = -move;
+      if (-move < log.maxAdverse) log.maxAdverse = -move;
+    }
+  });
+  renderSignalLogs();
+}
+
+function renderSignalLogs() {
+  const tbody = document.getElementById('logTableBody');
+  if (!strategyLogs.length || !tbody) return;
+  const sorted = [...strategyLogs].sort((a,b) => b.id - a.id);
+  tbody.innerHTML = sorted.map(log => {
+    const typeClass = log.type === 'BULL' ? 'log-bull' : 'log-bear';
+    const favColor  = log.maxFavorable > 10 ? 'var(--green)' : 'var(--text)';
+    const advColor  = log.maxAdverse < -20 ? 'var(--red)' : 'var(--text)';
+    const currMove  = log.type === 'BULL' ? (log.currentSpot - log.entrySpot) : (log.entrySpot - log.currentSpot);
+    const currColor = currMove > 0 ? 'var(--green)' : currMove < 0 ? 'var(--red)' : 'var(--text)';
+    
+    return `<tr class="log-row">
+      <td>${log.time}</td>
+      <td style="color:var(--purple);">${log.source}</td>
+      <td class="${typeClass}">${log.type}</td>
+      <td>${log.entrySpot.toFixed(1)}</td>
+      <td style="color:${currColor}">${log.currentSpot.toFixed(1)} (${currMove>0?'+':''}${currMove.toFixed(1)})</td>
+      <td style="color:${favColor}">+${log.maxFavorable.toFixed(1)}</td>
+      <td style="color:${advColor}">${log.maxAdverse.toFixed(1)}</td>
+      <td style="color:var(--muted);font-size:9px;">${log.notes}</td>
+    </tr>`;
+  }).join('');
+}
+
+function exportSignalLogs() {
+  if (!strategyLogs.length) return toast('Log empty hai.', true);
+  const logStr = JSON.stringify(strategyLogs, null, 2);
+  navigator.clipboard.writeText(logStr).then(() => {
+    toast('✓ Logs Copied!', false);
+  }).catch(err => { toast('Error copying logs', true); });
+}
 </script>
 
 </body>
