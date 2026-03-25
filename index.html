@@ -8301,19 +8301,19 @@ function onChainLoaded() {
 
 // 2. BATTLE LOGIC (Ye wahi code hai jo aapne bheja, fixed version)
 /* ══════════════════════════════════════════════════════
-   NAVINS PRO TERMINAL - FINAL INTEGRATED MASTER (V11)
-   Updates: Power Hour Sensitivity + Dual Buy/Sell Advisor
-══════════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════════
-   NAVINS PRO TERMINAL - BATTLEGROUND ENGINE (V12)
-   Fixes: MST Logging + Dual Advisor + Dash Bug
+   NAVINS PRO TERMINAL - BATTLEGROUND ENGINE (V13)
+   Fixes: "Not Defined" Error + Scalper Swings + MST Link
 ══════════════════════════════════════════════════════ */
 function updateOptionsBattle() {
-    // 1. DATA VALIDATION
-    if (!chainData || !chainData.length) return;
+    // 1. DATA VALIDATION (Connection Check)
+    if (!window.chainData || !window.chainData.length) {
+        console.log("Battleground: Waiting for data...");
+        return;
+    }
 
-    const spot = chainData[0].underlying_spot_price;
-    const instrKey = document.getElementById('symbolSel').value;
+    const data = window.chainData;
+    const spot = data[0].underlying_spot_price;
+    const instrKey = document.getElementById('symbolSel')?.value || 'NIFTY';
     const step = INSTRUMENTS[instrKey]?.step || 50;
     const atm = Math.round(spot / step) * step;
     const time = new Date().toLocaleTimeString('en-IN');
@@ -8324,25 +8324,22 @@ function updateOptionsBattle() {
     let atmCE = null, atmPE = null;
     const friction = 0.01;
 
-    chainData.forEach(d => {
-        const ce = d.call_options || {};
-        const pe = d.put_options || {};
+    data.forEach(d => {
+        const ceMD = d.call_options?.market_data || {};
+        const peMD = d.put_options?.market_data || {};
         const s = d.strike_price;
-        const ceMD = ce.market_data || {};
-        const peMD = pe.market_data || {}; // Fixed typo here
 
-        // S/R Logic
+        // Support/Resistance Logic
         if (Math.abs(s - spot) <= 500) { 
             if ((ceMD.oi || 0) > maxCOI) { maxCOI = ceMD.oi; resStrike = s; }
             if ((peMD.oi || 0) > maxPOI) { maxPOI = peMD.oi; supStrike = s; }
         }
 
-        if (s === atm) { atmCE = ce; atmPE = pe; }
+        if (s === atm) { atmCE = d.call_options; atmPE = d.put_options; }
 
         const ceChg = (ceMD.oi || 0) - (ceMD.prev_oi || 0);
         const peChg = (peMD.oi || 0) - (peMD.prev_oi || 0);
         
-        // Anti-Crash Protection
         const cClose = ceMD.close_price || ceMD.ltp || 1;
         const pClose = peMD.close_price || peMD.ltp || 1;
         
@@ -8361,57 +8358,43 @@ function updateOptionsBattle() {
         }
     });
 
-    // 🎯 2. SCALPER ADVISOR (Fix for 11:20 & 14:00 Swings)
+    // 🎯 2. ADVISOR (Scalper Sensitivity)
     const adviceEl = document.getElementById('greeksAdvice');
     if (atmCE && atmPE && adviceEl) {
         const cLTP = atmCE.market_data?.ltp || 0;
         const pLTP = atmPE.market_data?.ltp || 0;
         const cClose = atmCE.market_data?.close_price || cLTP;
-        const pClose = atmPE.market_data?.close_price || pLTP;
         const pDelta = Math.abs(atmPE.option_greeks?.delta || 0);
         const cDelta = atmCE.option_greeks?.delta || 0;
 
-        // LTP Divergence Check
+        // LTP Divergence Logic (For 11:20/14:00 swings)
         const cePriceFalling = ((cLTP - cClose) / (cClose || 1)) * 100 < -1.5;
-        const pePriceFalling = ((pLTP - pClose) / (pClose || 1)) * 100 < -1.5;
 
-        let notes = "";
+        let status = "⚖️ SIDEWAYS: No clear move.";
         let color = "var(--yellow)";
-        let status = "⚖️ SIDEWAYS: Trend is fighting.";
 
-        // Special Reversal Check
         if (peWriters > ceWriters * 1.8 && cePriceFalling) {
             status = "⚠️ SCALPER ALERT: OI Bullish but Price Falling! Exit/Wait.";
             color = "#ff9f40";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Scalper', 'BEAR', spot, time, label, "CE Price Divergence");
+            if (typeof registerSignalLog === 'function') registerSignalLog('Scalper', 'BEAR', spot, time, label, "Price/OI Divergence");
         } 
-        else if (ceWriters > peWriters * 1.8 && pePriceFalling) {
-            status = "⚠️ SCALPER ALERT: OI Bearish but PE Price Falling! Wait.";
-            color = "#ff9f40";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Scalper', 'BULL', spot, time, label, "PE Price Divergence");
-        }
         else if (peWriters > ceWriters * 2.2 && cDelta >= 0.45) {
-            notes = `CE BUY: ${atm} CE @ ₹${cLTP}`;
-            status = `🚀 CE BUYING: ${notes}`;
+            status = `🚀 CE BUYING: ${atm} CE @ ₹${cLTP}`;
             color = "#00e5a0";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BULL', spot, time, label, notes);
+            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BULL', spot, time, label, `CE BUY @ ${cLTP}`);
         } else if (ceWriters > peWriters * 2.2 && pDelta >= 0.45) {
-            notes = `PE BUY: ${atm} PE @ ₹${pLTP}`;
-            status = `📉 PE BUYING: ${notes}`;
+            status = `📉 PE BUYING: ${atm} PE @ ₹${pLTP}`;
             color = "#ff3d6b";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BEAR', spot, time, label, notes);
+            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BEAR', spot, time, label, `PE BUY @ ${pLTP}`);
         } else if (peWriters > ceWriters * 1.5) {
-            status = `🛡️ PUT SELLING: ${atm} PE @ ₹${pLTP} (Support Heavy)`;
+            status = `🛡️ PUT SELLING: ${atm} PE @ ₹${pLTP} (Support Strong)`;
             color = "#00e5a0";
-        } else if (ceWriters > peWriters * 1.5) {
-            status = `🧱 CALL SELLING: ${atm} CE @ ₹${cLTP} (Resistance Solid)`;
-            color = "#ff3d6b";
         }
 
         adviceEl.innerHTML = `<span style="color:${color}; font-weight:bold;">${status}</span>`;
     }
 
-    // 🔮 3. UI UPDATES
+    // 🔮 3. UI UPDATES (Numbers & Labels)
     const fNum = (n) => n >= 10000000 ? (n/10000000).toFixed(2) + 'Cr' : n >= 100000 ? (n/100000).toFixed(2) + 'L' : (n/1000).toFixed(1) + 'K';
     
     document.getElementById('ceWriteVal').textContent = fNum(ceWriters);
@@ -8429,5 +8412,6 @@ function updateOptionsBattle() {
     else if (peWriters > peBuyers * 1.5 && ceBuyers > ceWriters) { vEl.textContent = "STRONG BULLISH 🚀"; vEl.style.color = "#00e5a0"; }
     else { vEl.textContent = "MOMENTUM PRESSURE ⚡"; vEl.style.color = "#ffd000"; }
 }
+</script>
 </body>
 </html>
