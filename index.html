@@ -8020,301 +8020,45 @@ function toast(msg, isErr = false) {
 </div>
 
 <script>
-(function(){
-  function checkMobileNav() {
-    const nav = document.getElementById('mobileNav');
-    if (!nav) return;
-    if (window.innerWidth <= 768) {
-      nav.style.display = 'block';
-      document.querySelector('.app').style.paddingBottom = '72px';
-      // Show scroll hint
-      const hint = document.getElementById('scrollHint');
-      if (hint) hint.style.display = 'block';
-    } else {
-      nav.style.display = 'none';
-      document.querySelector('.app').style.paddingBottom = '0';
-      const hint = document.getElementById('scrollHint');
-      if (hint) hint.style.display = 'none';
-    }
-  }
-  window.addEventListener('resize', checkMobileNav);
-  window.addEventListener('DOMContentLoaded', checkMobileNav);
-  checkMobileNav();
-
-  // Hide scroll hint after first scroll
-  document.addEventListener('scroll', function() {
-    const hint = document.getElementById('scrollHint');
-    if (hint) hint.style.display = 'none';
-  }, { once: true, passive: true });
-
-  // Also handle touch scroll on table
-  document.addEventListener('DOMContentLoaded', function() {
-    const wrap = document.querySelector('.scroll-x');
-    if (wrap) {
-      wrap.addEventListener('touchstart', function() {
-        const hint = document.getElementById('scrollHint');
-        if (hint) hint.style.display = 'none';
-      }, { once: true, passive: true });
-    }
-  });
-
-  window.mobileScrollTo = function(key) {
-    const targets = {
-      chain:   () => document.querySelector('#tableContainer, .section-panel'),
-      ai:      () => document.querySelector('.ai-panel'),
-      unusual: () => document.querySelector('.unusual-panel, #unusualBody'),
-      wa:      () => document.querySelector('.wa-panel, #waBody')
-    };
-    // Find all section panels and match by header text
-    const panels = document.querySelectorAll('.section-panel');
-    const textMap = { chain:'OPTION CHAIN', ai:'AI MARKET', unusual:'UNUSUAL', wa:'WHATSAPP' };
-    let found = null;
-    panels.forEach(p => {
-      if (textMap[key] && p.textContent.toUpperCase().includes(textMap[key])) found = p;
-    });
-    if (!found && targets[key]) found = targets[key]();
-    if (found) found.scrollIntoView({behavior:'smooth', block:'start'});
-  };
-})();
 /* ══════════════════════════════════════════════════════
-   MASTER SIGNAL TESTER (Tracks ALL 4 Engines)
-══════════════════════════════════════════════════════ */
-let strategyLogs = [];
-
-function checkAndLogSignals(spot) {
-  if (!chainData.length || !spot) return;
-  const instrKey = document.getElementById('symbolSel')?.value || '';
-  const label    = INSTRUMENTS[instrKey]?.label || 'INDEX';
-  const time     = new Date().toLocaleTimeString('en-IN');
-  const step     = INSTRUMENTS[instrKey]?.step || 50;
-  const atm      = Math.round(spot / step) * step;
-  const pcr      = document.getElementById('statPCR')?.textContent || '—';
-  const ctx      = `PCR:${pcr}`;
-
-  // 1. AI / OI ANALYSIS ENGINE
-  try {
-    const r = analyzeOptionChain();
-    if (r && r.dirClass && r.dirClass !== 'neutral') {
-      registerSignalLog('AI+OI', r.dirClass === 'bullish' ? 'BULL' : 'BEAR',
-        spot, time, label, `${r.direction} (${r.confidence}%) ${ctx}`);
-    }
-  } catch(e) { console.log('MST AI err:', e); }
-
-  // 2. EMA CROSSOVER
-  if (emaAllCandles.length > 2) {
-    try {
-      const opens  = emaAllCandles.map(c => c[1]);
-      const closes = emaAllCandles.map(c => c[4]);
-      const emaO   = calcEMA(opens,  6);
-      const emaC   = calcEMA(closes, 6);
-      const n      = emaAllCandles.length - 1;
-      if (emaC[n] != null && emaO[n] != null && emaC[n-1] != null && emaO[n-1] != null) {
-        if (emaC[n-1] <= emaO[n-1] && emaC[n] > emaO[n])
-          registerSignalLog('EMA Cross', 'BULL', spot, time, label, `Bull Cross @ ${spot} ${ctx}`);
-        else if (emaC[n-1] >= emaO[n-1] && emaC[n] < emaO[n])
-          registerSignalLog('EMA Cross', 'BEAR', spot, time, label, `Bear Cross @ ${spot} ${ctx}`);
-      }
-    } catch(e) { console.log('MST EMA err:', e); }
-  }
-
-  // 3. OI BUILD AT ATM (Call/Put writing)
-  try {
-    const atmRow = chainData.find(d => d.strike_price === atm);
-    if (atmRow) {
-      const ce    = atmRow.call_options?.market_data || {};
-      const pe    = atmRow.put_options?.market_data  || {};
-      const ceChg = (ce.oi||0) - (ce.prev_oi||0);
-      const peChg = (pe.oi||0) - (pe.prev_oi||0);
-      if (peChg > 0)
-        registerSignalLog('OI Build', 'BULL', spot, time, label, `Put Build +${peChg.toLocaleString()} @ ATM ${atm}`);
-      if (ceChg > 0)
-        registerSignalLog('OI Build', 'BEAR', spot, time, label, `Call Build +${ceChg.toLocaleString()} @ ATM ${atm}`);
-    }
-  } catch(e) {}
-
-  // 4. SENTIMENT
-  try {
-    const trendEl = document.getElementById('sentTrendVal');
-    const trend   = trendEl?.textContent || '';
-    if (trend && trend !== '—') {
-      if (trend.toUpperCase().includes('BULL'))
-        registerSignalLog('Sentiment', 'BULL', spot, time, label, `${trend} ${ctx}`);
-      else if (trend.toUpperCase().includes('BEAR'))
-        registerSignalLog('Sentiment', 'BEAR', spot, time, label, `${trend} ${ctx}`);
-    }
-  } catch(e) {}
-
-  // 5. OI SPIKE ALERTS
-  try {
-    chainData.forEach(d => {
-      const ce   = d.call_options?.market_data || {};
-      const pe   = d.put_options?.market_data  || {};
-      const s    = d.strike_price;
-      if (Math.abs(s - spot) > step * 8) return; // only near ATM
-      const cChg = (ce.oi||0) - (ce.prev_oi||0);
-      const pChg = (pe.oi||0) - (pe.prev_oi||0);
-      if (cChg > 100000)
-        registerSignalLog('OI Spike', 'BEAR', spot, time, label, `CE Spike +${(cChg/1000).toFixed(0)}K @ ${s}`);
-      if (pChg > 100000)
-        registerSignalLog('OI Spike', 'BULL', spot, time, label, `PE Spike +${(pChg/1000).toFixed(0)}K @ ${s}`);
-    });
-  } catch(e) {}
-}
-
-function registerSignalLog(source, type, entrySpot, time, symbol, notes) {
-  // Cooldown per source — OI Build/Spike = 30min, others = 5min
-  const cooldownMs = (source === 'OI Build' || source === 'OI Spike') 
-    ? 30 * 60 * 1000   // 30 min — OI build changes slowly
-    : 5  * 60 * 1000;  // 5 min
-
-  const isDuplicate = strategyLogs.some(log =>
-    log.source === source && log.type === type && log.symbol === symbol &&
-    (new Date() - new Date(log.timestampObj)) < cooldownMs
-  );
-  if (isDuplicate) return;
-
-  strategyLogs.push({
-    id        : Date.now(),
-    timestampObj: new Date().toISOString(),
-    time,
-    source,
-    type,
-    symbol,
-    entrySpot,
-    currentSpot : entrySpot,
-    maxFavorable: 0,
-    maxAdverse  : 0,
-    notes
-  });
-
-  toast(`🧪 ${type} — ${source}: ${notes.slice(0,40)}`, false);
-  renderSignalLogs();
-}
-
-function updateSignalLogs(currentSpot) {
-  if (!strategyLogs.length || !currentSpot) return;
-  const now = new Date();
-  strategyLogs.forEach(log => {
-    // Only track for 2 hours after entry
-    const ageMs = now - new Date(log.timestampObj);
-    if (ageMs > 2 * 60 * 60 * 1000) return;
-
-    log.currentSpot = currentSpot;
-    const move = currentSpot - log.entrySpot;
-    const favorable = log.type === 'BULL' ? move : -move;
-    const adverse   = log.type === 'BULL' ? move : -move;
-
-    if (favorable > log.maxFavorable) log.maxFavorable = favorable;
-    if (adverse   < log.maxAdverse)   log.maxAdverse   = adverse;
-  });
-  renderSignalLogs();
-}
-
-function renderSignalLogs() {
-  const tbody = document.getElementById('logTableBody');
-  if (!tbody) return;
-
-  // Update waiting message
-  const waiting = document.getElementById('signalWaiting');
-
-  if (!strategyLogs.length) {
-    if (waiting) waiting.style.display = '';
-    tbody.innerHTML = '';
-    return;
-  }
-  if (waiting) waiting.style.display = 'none';
-
-  const sorted = [...strategyLogs].sort((a,b) => b.id - a.id).slice(0, 50);
-  tbody.innerHTML = sorted.map(log => {
-    const isBull    = log.type === 'BULL';
-    const typeColor = isBull ? '#00e5a0' : '#ff3d6b';
-    const typeLabel = isBull ? '▲ BULL' : '▼ BEAR';
-    const currMove  = isBull ? (log.currentSpot - log.entrySpot) : (log.entrySpot - log.currentSpot);
-    const currColor = currMove > 0 ? '#00e5a0' : currMove < 0 ? '#ff3d6b' : 'var(--muted)';
-    const favColor  = log.maxFavorable > 5  ? '#00e5a0' : 'var(--muted)';
-    const advColor  = log.maxAdverse   < -5 ? '#ff3d6b' : 'var(--muted)';
-    const pnlStr    = `${currMove >= 0 ? '+' : ''}${currMove.toFixed(1)}`;
-
-    return `<tr style="border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:10px;">
-      <td style="padding:5px 8px;color:var(--muted);white-space:nowrap;">${log.time}</td>
-      <td style="padding:5px 8px;color:#a78bfa;">${log.source}</td>
-      <td style="padding:5px 8px;color:${typeColor};font-weight:bold;">${typeLabel}</td>
-      <td style="padding:5px 8px;">${log.entrySpot.toFixed(1)}</td>
-      <td style="padding:5px 8px;color:${currColor};font-weight:bold;">${log.currentSpot.toFixed(1)} <span style="font-size:9px;">(${pnlStr})</span></td>
-      <td style="padding:5px 8px;color:${favColor};">+${log.maxFavorable.toFixed(1)}</td>
-      <td style="padding:5px 8px;color:${advColor};">${log.maxAdverse.toFixed(1)}</td>
-      <td style="padding:5px 8px;color:var(--muted);font-size:9px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${log.notes}">${log.notes}</td>
-    </tr>`;
-  }).join('');
-}
-
-function exportSignalLogs() {
-  if (!strategyLogs.length) return toast('Log empty hai.', true);
-  const logStr = JSON.stringify(strategyLogs, null, 2);
-  navigator.clipboard.writeText(logStr).then(() => {
-    toast('✓ Logs Copied!', false);
-  }).catch(err => { toast('Error copying logs', true); });
-}
-// [duplicate checkAndLogSignals removed]
-
-// [old updateSignalLogs removed]
-/* ══════════════════════════════════════════════════════
-   OPTIONS BATTLEGROUND - PRO ENGINE (SHURU SE)
-══════════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════════
-   NAVINS PRO TERMINAL - FINAL INTEGRATED ENGINE
-   Fixes: Advisor Box, 0.0K Issue, and Level Distance
-══════════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════════
-   NAVINS PRO TERMINAL - MASTER BLOCK (Trigger + Fixed Logic)
-   Fixes: Data Loading, 0.0K Issue, and Level Proximity
+   NAVINS PRO TERMINAL - MASTER CONSOLIDATED V13
+   Features: Scalper Divergence + MST Table Logging
+   Fixes: Intraday Swings (11:20/14:00) & Double Assignment
 ══════════════════════════════════════════════════════ */
 
-// 1. DATA TRIGGER (Ye Upstox se data aate hi sab chalu karega)
-function onChainLoaded() {
-    const spot = (chainData && chainData[0]) ? chainData[0].underlying_spot_price : 0;
+// 1. DATA TRIGGER (One single source of truth)
+window.onChainLoaded = function() {
+    if (!window.chainData || window.chainData.length === 0) return;
+    const spot = window.chainData[0].underlying_spot_price || 0;
     if (spot <= 0) return;
 
-    // Saare functions ko EK baar call karein
+    // Run All Modules in Sequence
     updateOptionsBattle(); 
-    calcBuyingDanger();
-    updateSentimentDash();
-    updateTradeSetup();
-    updateOITracker();
-    checkPriceAlerts(spot);
-    runAlerts();
-    renderHeatmap();
-
-    // Charts aur Storage
-    if (oiAutoSave) saveOISnapshot();
-    updateOIStorageUI();
-    populateCandleStrikes();
-    buildStrategy(activeStrategy);
-    recordPriceActionSnapshot();
-    updatePriceActionStrikes();
-    renderPriceAction();
-
-    // Signal Logging
+    if (typeof calcBuyingDanger === 'function') calcBuyingDanger();
+    if (typeof updateSentimentDash === 'function') updateSentimentDash();
+    if (typeof updateTradeSetup === 'function') updateTradeSetup();
+    if (typeof updateOITracker === 'function') updateOITracker();
+    
+    // Alerts & Logging
+    if (typeof checkPriceAlerts === 'function') checkPriceAlerts(spot);
+    if (typeof runAlerts === 'function') runAlerts();
     if (typeof checkAndLogSignals === 'function') checkAndLogSignals(spot);
     if (typeof updateSignalLogs === 'function') updateSignalLogs(spot);
-}
 
-// 2. BATTLE LOGIC (Ye wahi code hai jo aapne bheja, fixed version)
-/* ══════════════════════════════════════════════════════
-   NAVINS PRO TERMINAL - FINAL INTEGRATED MASTER (V11)
-   Updates: Power Hour Sensitivity + Dual Buy/Sell Advisor
-══════════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════════
-   NAVINS PRO TERMINAL - BATTLEGROUND ENGINE (V12)
-   Fixes: MST Logging + Dual Advisor + Dash Bug
-══════════════════════════════════════════════════════ */
+    // Render Extras
+    if (typeof renderHeatmap === 'function') renderHeatmap();
+    if (typeof recordPriceActionSnapshot === 'function') recordPriceActionSnapshot();
+    if (typeof renderPriceAction === 'function') renderPriceAction();
+};
+
+// 2. THE SCALPER BATTLE ENGINE (Fix for 11:20 & 14:00 Swings)
 function updateOptionsBattle() {
-    // 1. DATA VALIDATION
-    if (!chainData || !chainData.length) return;
+    const data = window.chainData;
+    if (!data || !data.length) return;
 
-    const spot = chainData[0].underlying_spot_price;
-    const instrKey = document.getElementById('symbolSel').value;
-    const step = INSTRUMENTS[instrKey]?.step || 50;
+    const spot = data[0].underlying_spot_price;
+    const instrKey = document.getElementById('symbolSel')?.value || 'NSE_INDEX|Nifty 50';
+    const step = (INSTRUMENTS[instrKey]?.step) || 50;
     const atm = Math.round(spot / step) * step;
     const time = new Date().toLocaleTimeString('en-IN');
     const label = INSTRUMENTS[instrKey]?.label || 'INDEX';
@@ -8322,105 +8066,107 @@ function updateOptionsBattle() {
     let ceWriters = 0, ceBuyers = 0, peWriters = 0, peBuyers = 0;
     let maxCOI = 0, maxPOI = 0, resStrike = 0, supStrike = 0;
     let atmCE = null, atmPE = null;
-    const friction = 0.01;
 
-    chainData.forEach(d => {
-        const ce = d.call_options || {};
-        const pe = d.put_options || {};
+    data.forEach(d => {
+        const ceMD = d.call_options?.market_data || {};
+        const peMD = d.put_options?.market_data || {};
         const s = d.strike_price;
-        const ceMD = ce.market_data || {};
-        const peMD = pe.market_data || {};
 
-        // S/R Logic
         if (Math.abs(s - spot) <= 500) { 
             if ((ceMD.oi || 0) > maxCOI) { maxCOI = ceMD.oi; resStrike = s; }
             if ((peMD.oi || 0) > maxPOI) { maxPOI = peMD.oi; supStrike = s; }
         }
-
-        if (s === atm) { atmCE = ce; atmPE = pe; }
+        if (s === atm) { atmCE = d.call_options; atmPE = d.put_options; }
 
         const ceChg = (ceMD.oi || 0) - (ceMD.prev_oi || 0);
         const peChg = (peMD.oi || 0) - (peMD.prev_oi || 0);
-        
-        // Anti-Crash Protection for Close Price
         const cClose = ceMD.close_price || ceMD.ltp || 1;
-        const pClose = peMD.close_price || peMD.ltp || 1;
-        
         const ceLtpChg = ((ceMD.ltp - cClose) / cClose) * 100;
-        const peLtpChg = ((peMD.ltp - pClose) / pClose) * 100;
 
         if (Math.abs(s - spot) <= 500) {
             if (ceChg > 0) {
-                if (ceLtpChg < -friction) { ceWriters += ceChg * 0.85; ceBuyers += ceChg * 0.15; }
+                if (ceLtpChg < -0.01) { ceWriters += ceChg * 0.85; ceBuyers += ceChg * 0.15; }
                 else { ceBuyers += ceChg * 0.85; ceWriters += ceChg * 0.15; }
             }
             if (peChg > 0) {
-                if (peLtpChg < -friction) { peWriters += peChg * 0.85; peBuyers += peChg * 0.15; }
+                const peLtpChg = ((peMD.ltp - (peMD.close_price || peMD.ltp)) / (peMD.close_price || 1)) * 100;
+                if (peLtpChg < -0.01) { peWriters += peChg * 0.85; peBuyers += peChg * 0.15; }
                 else { peBuyers += peChg * 0.85; peWriters += peChg * 0.15; }
             }
         }
     });
 
-    // 🎯 2. SCALPER ADVISOR (Fix for 11:20 & 14:00 Swings)
     const adviceEl = document.getElementById('greeksAdvice');
     if (atmCE && atmPE && adviceEl) {
         const cLTP = atmCE.market_data?.ltp || 0;
         const pLTP = atmPE.market_data?.ltp || 0;
         const cClose = atmCE.market_data?.close_price || cLTP;
-        const pDelta = Math.abs(atmPE.option_greeks?.delta || 0);
-        const cDelta = atmCE.option_greeks?.delta || 0;
+        const cePriceFalling = ((cLTP - cClose) / cClose) * 100 < -1.5; 
 
-        // LTP Check: Kya price OI ke against ja raha hai?
-        const cePriceFalling = ((cLTP - cClose) / (cClose || 1)) * 100 < -1.5;
-
-        let notes = "";
+        let status = "⏳ SIDEWAYS: Waiting for confirmation.";
         let color = "var(--yellow)";
-        let status = "⏳ SIDEWAYS: Market is fighting.";
 
-        // Special Reversal Check
+        // 🚨 SCALPER DIVERGENCE ENGINE (The Swing Fix)
         if (peWriters > ceWriters * 1.8 && cePriceFalling) {
-            status = "⚠️ SCALPER ALERT: OI Bullish but Price Falling! Exit/Wait.";
-            color = "#ff9f40";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Scalper', 'BEAR', spot, time, label, "Price/OI Divergence");
-        } 
-        else if (peWriters > ceWriters * 2.2 && cDelta >= 0.45) {
-            notes = `CE BUY: ${atm} CE @ ₹${cLTP}`;
-            status = `🚀 CE BUYING: ${notes}`;
+            status = "⚠️ SCALPER ALERT: OI Bullish but Price Falling! Exit Longs.";
+            color = "#ff9f40"; 
+            registerSignalLog('Scalper', 'BEAR', spot, time, label, "Price/OI Divergence");
+        } else if (peWriters > ceWriters * 2.2) {
+            status = `🚀 CE BUYING: ${atm} CE @ ₹${cLTP} (Support Strong)`;
             color = "#00e5a0";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BULL', spot, time, label, notes);
-        } else if (ceWriters > peWriters * 2.2 && pDelta >= 0.45) {
-            notes = `PE BUY: ${atm} PE @ ₹${pLTP}`;
-            status = `📉 PE BUYING: ${notes}`;
+            registerSignalLog('Battleground', 'BULL', spot, time, label, `CE BUY @ ${cLTP}`);
+        } else if (ceWriters > peWriters * 2.2) {
+            status = `📉 PE BUYING: ${atm} PE @ ₹${pLTP} (Resistance Heavy)`;
             color = "#ff3d6b";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BEAR', spot, time, label, notes);
-        } else if (peWriters > ceWriters * 1.5) {
-            status = `🛡️ PUT SELLING: ${atm} PE @ ₹${pLTP} (Safe)`;
-            color = "#00e5a0";
-        } else if (ceWriters > peWriters * 1.5) {
-            status = `🧱 CALL SELLING: ${atm} CE @ ₹${cLTP} (Safe)`;
-            color = "#ff3d6b";
+            registerSignalLog('Battleground', 'BEAR', spot, time, label, `PE BUY @ ${pLTP}`);
         }
-
         adviceEl.innerHTML = `<span style="color:${color}; font-weight:bold;">${status}</span>`;
     }
 
-    // 🔮 3. UI UPDATES
-    const fNum = (n) => n >= 10000000 ? (n/10000000).toFixed(2) + 'Cr' : n >= 100000 ? (n/100000).toFixed(2) + 'L' : (n/1000).toFixed(1) + 'K';
-    
+    // UI Updates
+    const fNum = (n) => n >= 100000 ? (n/100000).toFixed(2) + 'L' : (n/1000).toFixed(1) + 'K';
     document.getElementById('ceWriteVal').textContent = fNum(ceWriters);
     document.getElementById('ceBuyVal').textContent = fNum(ceBuyers);
     document.getElementById('peWriteVal').textContent = fNum(peWriters);
     document.getElementById('peBuyVal').textContent = fNum(peBuyers);
     document.getElementById('strongResist').textContent = resStrike || '—';
     document.getElementById('strongSupport').textContent = supStrike || '—';
-    
     document.getElementById('callWinner').innerHTML = ceWriters > ceBuyers ? '<span style="color:#ff3d6b">WRITERS DOMINANT 🔴</span>' : '<span style="color:#00e5a0">BUYERS DOMINANT 🟢</span>';
     document.getElementById('putWinner').innerHTML = peWriters > peBuyers ? '<span style="color:#00e5a0">WRITERS DOMINANT 🟢</span>' : '<span style="color:#ff3d6b">BUYERS DOMINANT 🔴</span>';
 
     const vEl = document.getElementById('marketVerdict');
-    if (ceWriters > ceBuyers * 1.5 && peBuyers > peWriters) { vEl.textContent = "STRONG BEARISH 📉"; vEl.style.color = "#ff3d6b"; }
-    else if (peWriters > peBuyers * 1.5 && ceBuyers > ceWriters) { vEl.textContent = "STRONG BULLISH 🚀"; vEl.style.color = "#00e5a0"; }
+    if (peWriters > ceWriters * 1.5) { vEl.textContent = "STRONG BULLISH 🚀"; vEl.style.color = "#00e5a0"; }
+    else if (ceWriters > peWriters * 1.5) { vEl.textContent = "STRONG BEARISH 📉"; vEl.style.color = "#ff3d6b"; }
     else { vEl.textContent = "SIDEWAYS ⚖️"; vEl.style.color = "#ffd000"; }
+}
+
+// 3. MASTER SIGNAL LOGGING (MST)
+function registerSignalLog(source, type, entrySpot, time, symbol, notes) {
+    const cooldownMs = (source === 'Scalper') ? 3 * 60 * 1000 : 8 * 60 * 1000;
+    const isDuplicate = strategyLogs.some(log => log.source === source && log.type === type && (new Date() - new Date(log.timestampObj)) < cooldownMs);
+    if (isDuplicate) return;
+
+    strategyLogs.push({ id: Date.now(), timestampObj: new Date().toISOString(), time, source, type, symbol, entrySpot, currentSpot: entrySpot, maxFavorable: 0, maxAdverse: 0, notes });
+    renderSignalLogs();
+}
+
+function renderSignalLogs() {
+    const tbody = document.getElementById('logTableBody');
+    if (!tbody || !strategyLogs.length) return;
+    const sorted = [...strategyLogs].sort((a,b) => b.id - a.id).slice(0, 50);
+    tbody.innerHTML = sorted.map(log => {
+        const isBull = log.type === 'BULL';
+        return `<tr class="log-row">
+            <td>${log.time}</td>
+            <td style="color:${log.source==='Scalper'?'#ff9f40':'#a78bfa'}">${log.source}</td>
+            <td style="color:${isBull?'#00e5a0':'#ff3d6b'}">${isBull?'▲ BULL':'▼ BEAR'}</td>
+            <td>${log.entrySpot.toFixed(1)}</td>
+            <td style="font-weight:bold;">${log.currentSpot.toFixed(1)}</td>
+            <td style="color:#00e5a0">+${log.maxFavorable.toFixed(1)}</td>
+            <td style="color:#ff3d6b">${log.maxAdverse.toFixed(1)}</td>
+            <td style="font-size:9px; color:var(--muted)">${log.notes}</td>
+        </tr>`;
+    }).join('');
 }
 </script>
 </body>
