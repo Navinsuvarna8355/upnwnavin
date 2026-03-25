@@ -8305,8 +8305,8 @@ function onChainLoaded() {
 
 // 2. Ab is function ko replace karein
 function updateOptionsBattle() {
-    // A. Connection & Data Check
-    const data = (typeof chainData !== 'undefined' && chainData.length) ? chainData : window.chainData;
+    // 1. DATA CHECK (No crash logic)
+    const data = (window.chainData && window.chainData.length > 0) ? window.chainData : chainData;
     if (!data || !data.length) return;
 
     const spot = data[0].underlying_spot_price;
@@ -8331,44 +8331,45 @@ function updateOptionsBattle() {
         }
         if (s === atm) { atmCE = ceMD; atmPE = peMD; }
 
+        // Writers vs Buyers Logic
         const ceChg = (ceMD.oi || 0) - (ceMD.prev_oi || 0);
         const peChg = (peMD.oi || 0) - (peMD.prev_oi || 0);
         const cBase = ceMD.close_price || ceMD.ltp || 1;
         const pBase = peMD.close_price || peMD.ltp || 1;
 
-        if (Math.abs(s - spot) <= 500) {
-            if (ceChg > 0) {
-                if (ceMD.ltp < cBase) { ceWriters += ceChg * 0.85; ceBuyers += ceChg * 0.15; }
-                else { ceBuyers += ceChg * 0.85; ceWriters += ceChg * 0.15; }
-            }
-            if (peChg > 0) {
-                if (peMD.ltp < pBase) { peWriters += peChg * 0.85; peBuyers += peChg * 0.15; }
-                else { peBuyers += peChg * 0.85; peWriters += peChg * 0.15; }
-            }
+        if (ceChg > 0) {
+            if (ceMD.ltp < cBase) { ceWriters += ceChg * 0.85; ceBuyers += ceChg * 0.15; }
+            else { ceBuyers += ceChg * 0.85; ceWriters += ceChg * 0.15; }
+        }
+        if (peChg > 0) {
+            if (peMD.ltp < pBase) { peWriters += peChg * 0.85; peBuyers += peChg * 0.15; }
+            else { peBuyers += peChg * 0.85; peWriters += peChg * 0.15; }
         }
     });
 
-    // 🎯 B. SCALPER ADVISOR (The Swing Fix)
+    // 🎯 2. THE DYNAMIC SWING ENGINE (REVERSAL DETECTOR)
     const adviceEl = document.getElementById('greeksAdvice');
     if (atmCE && atmPE && adviceEl) {
         const cLTP = atmCE.ltp || 0;
         const pLTP = atmPE.ltp || 0;
 
-        // 🚨 INTRADAY MOMENTUM TRACKER (Comparing with last refresh)
-        const ceMomentum = window.navinPriceTracker.ce > 0 ? ((cLTP - window.navinPriceTracker.ce) / window.navinPriceTracker.ce) * 100 : 0;
-        const peMomentum = window.navinPriceTracker.pe > 0 ? ((pLTP - window.navinPriceTracker.pe) / window.navinPriceTracker.pe) * 100 : 0;
+        // 🚨 ANYTIME MOMENTUM TRACKER: 
+        // Comparing current price with price from 30 seconds ago
+        const ceMomo = window.navinPriceTracker.ce > 0 ? ((cLTP - window.navinPriceTracker.ce) / window.navinPriceTracker.ce) * 100 : 0;
+        const peMomo = window.navinPriceTracker.pe > 0 ? ((pLTP - window.navinPriceTracker.pe) / window.navinPriceTracker.pe) * 100 : 0;
         
-        // Save prices for next refresh
+        // Update memory for next refresh
         window.navinPriceTracker = { ce: cLTP, pe: pLTP };
 
-        let status = "⚖️ SIDEWAYS: No clear Scalp.";
+        let status = "⚖️ SIDEWAYS: Watching for Swing...";
         let color = "var(--yellow)";
 
-        // Catch the 11:20/14:00 type drops (Price falls even if OI is bullish)
-        if (peWriters > ceWriters * 1.5 && ceMomentum < -0.8) {
-            status = "⚠️ SCALPER ALERT: CE Price falling fast! Trend weakening.";
-            color = "#ff9f40";
-            if (typeof registerSignalLog === 'function') registerSignalLog('Scalper', 'BEAR', spot, time, label, "Sudden Price Drop");
+        // 🌊 CATCHING THE SWING (The 11:20/14:00 Logic)
+        // If Put OI is bullish but CE Price drops more than 0.75% suddenly
+        if (peWriters > ceWriters * 1.5 && ceMomo < -0.75) {
+            status = "⚠️ SWING ALERT: Price dropping against Bullish OI! Exit Longs.";
+            color = "#ff9f40"; // Orange alert
+            if (typeof registerSignalLog === 'function') registerSignalLog('Scalper', 'BEAR', spot, time, label, "Sudden Price/OI Divergence");
         } 
         else if (peWriters > ceWriters * 2.2) {
             status = `🚀 CE BUYING: ${atm} CE @ ₹${cLTP}`;
@@ -8379,14 +8380,14 @@ function updateOptionsBattle() {
             color = "#ff3d6b";
             if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BEAR', spot, time, label, `PE BUY @ ${pLTP}`);
         } else if (peWriters > ceWriters * 1.5) {
-            status = `🛡️ PUT SELLING: ${atm} PE @ ₹${pLTP} (Safe)`;
+            status = `🛡️ PUT SELLING: ${atm} PE @ ₹${pLTP} (Support Stable)`;
             color = "#00e5a0";
         }
 
         adviceEl.innerHTML = `<span style="color:${color}; font-weight:bold;">${status}</span>`;
     }
 
-    // 🔮 C. UI UPDATES
+    // 🔮 3. UI REFRESH
     const fNum = (n) => n >= 10000000 ? (n/10000000).toFixed(2) + 'Cr' : n >= 100000 ? (n/100000).toFixed(2) + 'L' : (n/1000).toFixed(1) + 'K';
     document.getElementById('ceWriteVal').textContent = fNum(ceWriters);
     document.getElementById('ceBuyVal').textContent = fNum(ceBuyers);
@@ -8401,7 +8402,7 @@ function updateOptionsBattle() {
     const vEl = document.getElementById('marketVerdict');
     if (peWriters > ceWriters * 1.5 && ceBuyers > ceWriters) { vEl.textContent = "STRONG BULLISH 🚀"; vEl.style.color = "#00e5a0"; }
     else if (ceWriters > peWriters * 1.5 && peBuyers > peWriters) { vEl.textContent = "STRONG BEARISH 📉"; vEl.style.color = "#ff3d6b"; }
-    else { vEl.textContent = "SIDEWAYS ⚖️"; vEl.style.color = "#ffd000"; }
+    else { vEl.textContent = "MOMENTUM PRESSURE ⚡"; vEl.style.color = "#ffd000"; }
 }
 </script>
 </body>
