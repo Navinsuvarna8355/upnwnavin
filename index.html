@@ -8309,29 +8309,33 @@ function onChainLoaded() {
    Fixes: MST Logging + Dual Advisor + Dash Bug
 ══════════════════════════════════════════════════════ */
 function updateOptionsBattle() {
-    if (!window.chainData || !window.chainData.length) return;
+    if (!chainData || !chainData.length) return;
 
-    const data = window.chainData;
-    const spot = data[0].underlying_spot_price;
-    const instrKey = document.getElementById('symbolSel')?.value || 'NIFTY';
+    const spot = chainData[0].underlying_spot_price;
+    const instrKey = document.getElementById('symbolSel').value;
     const step = INSTRUMENTS[instrKey]?.step || 50;
     const atm = Math.round(spot / step) * step;
     const time = new Date().toLocaleTimeString('en-IN');
+    const label = INSTRUMENTS[instrKey]?.label || 'INDEX';
 
     let ceWriters = 0, ceBuyers = 0, peWriters = 0, peBuyers = 0;
     let maxCOI = 0, maxPOI = 0, resStrike = 0, supStrike = 0;
     let atmCE = null, atmPE = null;
+    const friction = 0.01;
 
-    data.forEach(d => {
-        const ceMD = d.call_options?.market_data || {};
-        const peMD = peMD = d.put_options?.market_data || {};
+    chainData.forEach(d => {
+        const ce = d.call_options || {};
+        const pe = d.put_options || {};
         const s = d.strike_price;
+        const ceMD = ce.market_data || {};
+        const peMD = pe.market_data || {};
 
         if (Math.abs(s - spot) <= 500) { 
             if ((ceMD.oi || 0) > maxCOI) { maxCOI = ceMD.oi; resStrike = s; }
             if ((peMD.oi || 0) > maxPOI) { maxPOI = peMD.oi; supStrike = s; }
         }
-        if (s === atm) { atmCE = d.call_options; atmPE = d.put_options; }
+
+        if (s === atm) { atmCE = ce; atmPE = pe; }
 
         const ceChg = (ceMD.oi || 0) - (ceMD.prev_oi || 0);
         const peChg = (peMD.oi || 0) - (peMD.prev_oi || 0);
@@ -8340,57 +8344,47 @@ function updateOptionsBattle() {
 
         if (Math.abs(s - spot) <= 500) {
             if (ceChg > 0) {
-                if (ceLtpChg < -0.01) { ceWriters += ceChg * 0.85; ceBuyers += ceChg * 0.15; }
+                if (ceLtpChg < -friction) { ceWriters += ceChg * 0.85; ceBuyers += ceChg * 0.15; }
                 else { ceBuyers += ceChg * 0.85; ceWriters += ceChg * 0.15; }
             }
             if (peChg > 0) {
-                if (peLtpChg < -0.01) { peWriters += peChg * 0.85; peBuyers += peChg * 0.15; }
+                if (peLtpChg < -friction) { peWriters += peChg * 0.85; peBuyers += peChg * 0.15; }
                 else { peBuyers += peChg * 0.85; peWriters += peChg * 0.15; }
             }
         }
     });
 
+    // 🎯 ADVISOR + MST LOGGING (Fix: Ab yahan se Table mein signal jayega)
     const adviceEl = document.getElementById('greeksAdvice');
     if (atmCE && atmPE && adviceEl) {
         const cLTP = atmCE.market_data?.ltp || 0;
         const pLTP = atmPE.market_data?.ltp || 0;
-        const ceClose = atmCE.market_data?.close_price || cLTP;
-        const peClose = atmPE.market_data?.close_price || pLTP;
-        const ceDayChg = ((cLTP - ceClose) / ceClose) * 100;
-        const peDayChg = ((pLTP - peClose) / peClose) * 100;
+        const pDelta = Math.abs(atmPE.option_greeks?.delta || 0);
+        const cDelta = atmCE.option_greeks?.delta || 0;
+        let notes = "";
 
-        // 🚨 NEW: LTP DIVERGENCE ENGINE
-        const isPriceDropping = ceDayChg < -2.0; // CE price falling fast
-        const isPriceRising = ceDayChg > 2.0;   // CE price rising fast
-
-        let status = "";
-        let color = "var(--yellow)";
-
-        // Logic for Catching Swings (The 11:20 & 14:00 Fix)
-        if (peWriters > ceWriters * 2.0 && isPriceDropping) {
-            status = `⚠️ SCALPER ALERT: OI Bullish but Price Dropping! Exit Longs/Wait.`;
-            color = "#ff9f40"; 
-            registerSignalLog('Scalper', 'BEAR', spot, time, instrKey, "Price Divergence @ Bullish OI");
-        } else if (ceWriters > peWriters * 2.0 && peDayChg < -2.0) {
-            status = `⚠️ SCALPER ALERT: OI Bearish but PE Price Falling! Wait for entry.`;
-            color = "#ff9f40";
-            registerSignalLog('Scalper', 'BULL', spot, time, instrKey, "Price Divergence @ Bearish OI");
-        } else if (peWriters > ceWriters * 2.5 && !isPriceDropping) {
-            status = `🚀 CE BUYING: ${atm} CE @ ₹${cLTP} (Strong Support)`;
-            color = "#00e5a0";
-            registerSignalLog('Battleground', 'BULL', spot, time, instrKey, status);
-        } else if (ceWriters > peWriters * 2.5 && !isPriceRising) {
-            status = `📉 PE BUYING: ${atm} PE @ ₹${pLTP} (Strong Resistance)`;
-            color = "#ff3d6b";
-            registerSignalLog('Battleground', 'BEAR', spot, time, instrKey, status);
+        if (peWriters > peBuyers * 2.2 && cDelta >= 0.45) {
+            notes = `CE BUY: ${atm} CE @ ₹${cLTP}`;
+            adviceEl.innerHTML = `<span style="color:#00e5a0; font-weight:bold;">🚀 CE BUYING:</span> ${notes}`;
+            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BULL', spot, time, label, notes);
+        } else if (ceWriters > ceBuyers * 2.2 && pDelta >= 0.45) {
+            notes = `PE BUY: ${atm} PE @ ₹${pLTP}`;
+            adviceEl.innerHTML = `<span style="color:#ff3d6b; font-weight:bold;">📉 PE BUYING:</span> ${notes}`;
+            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BEAR', spot, time, label, notes);
+        } else if (peWriters > peBuyers * 1.5) {
+            notes = `PE SELL: ${atm} PE @ ₹${pLTP}`;
+            adviceEl.innerHTML = `<span style="color:#00e5a0; font-weight:bold;">🛡️ PUT SELLING:</span> ${notes} (Safe)`;
+            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BULL', spot, time, label, notes);
+        } else if (ceWriters > ceBuyers * 1.5) {
+            notes = `CE SELL: ${atm} CE @ ₹${cLTP}`;
+            adviceEl.innerHTML = `<span style="color:#ff3d6b; font-weight:bold;">🧱 CALL SELLING:</span> ${notes} (Safe)`;
+            if (typeof registerSignalLog === 'function') registerSignalLog('Battleground', 'BEAR', spot, time, label, notes);
         } else {
-            status = `⚖️ SIDEWAYS: No clear Scalp. Trend is ${peWriters > ceWriters ? 'Bullish' : 'Bearish'}.`;
+            adviceEl.innerHTML = `<span style="color:var(--yellow)">⏳ SIDEWAYS: No clear move in Battleground.</span>`;
         }
-
-        adviceEl.innerHTML = `<span style="color:${color}; font-weight:bold;">${status}</span>`;
     }
 
-    // Numbers & Verdict (Same as before)
+    // 🔮 UI UPDATES (Labels & Numbers)
     const fNum = (n) => n >= 100000 ? (n/100000).toFixed(2) + 'L' : (n/1000).toFixed(1) + 'K';
     document.getElementById('ceWriteVal').textContent = fNum(ceWriters);
     document.getElementById('ceBuyVal').textContent = fNum(ceBuyers);
@@ -8398,13 +8392,15 @@ function updateOptionsBattle() {
     document.getElementById('peBuyVal').textContent = fNum(peBuyers);
     document.getElementById('strongResist').textContent = resStrike || '—';
     document.getElementById('strongSupport').textContent = supStrike || '—';
+    
+    // Direct Labels Fix (Dash Bug Removal)
     document.getElementById('callWinner').innerHTML = ceWriters > ceBuyers ? '<span style="color:#ff3d6b">WRITERS DOMINANT 🔴</span>' : '<span style="color:#00e5a0">BUYERS DOMINANT 🟢</span>';
     document.getElementById('putWinner').innerHTML = peWriters > peBuyers ? '<span style="color:#00e5a0">WRITERS DOMINANT 🟢</span>' : '<span style="color:#ff3d6b">BUYERS DOMINANT 🔴</span>';
 
     const vEl = document.getElementById('marketVerdict');
     if (ceWriters > ceBuyers * 1.5 && peBuyers > peWriters) { vEl.textContent = "STRONG BEARISH 📉"; vEl.style.color = "#ff3d6b"; }
     else if (peWriters > peBuyers * 1.5 && ceBuyers > ceWriters) { vEl.textContent = "STRONG BULLISH 🚀"; vEl.style.color = "#00e5a0"; }
-    else { vEl.textContent = "MOMENTUM PRESSURE ⚡"; vEl.style.color = "#ffd000"; }
+    else { vEl.textContent = "SIDEWAYS ⚖️"; vEl.style.color = "#ffd000"; }
 }
 </script>
 </body>
