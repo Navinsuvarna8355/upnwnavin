@@ -8020,6 +8020,8 @@ function toast(msg, isErr = false) {
 </div>
 
 <script>
+	// 1. Is line ko apne code mein function ke bilkul UPAR paste karein (Outside the function)
+window.navinPriceTracker = { ce: 0, pe: 0 }; 
 (function(){
   function checkMobileNav() {
     const nav = document.getElementById('mobileNav');
@@ -8300,8 +8302,6 @@ function onChainLoaded() {
 }
 
 // 2. BATTLE LOGIC (Ye wahi code hai jo aapne bheja, fixed version)
-// 1. Is line ko apne code mein function ke bilkul UPAR paste karein (Outside the function)
-window.navinPriceTracker = { ce: 0, pe: 0 }; 
 
 // 2. Ab is function ko replace karein
 function updateOptionsBattle() {
